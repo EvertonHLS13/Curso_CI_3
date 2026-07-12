@@ -29,20 +29,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Configurar Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go_version }}
 
-      - name: Verify Docker
+      - name: Verificar Docker
         run: |
           docker --version
           docker compose version
 
-      - name: Start PostgreSQL
+      - name: Iniciar PostgreSQL
         run: docker compose up -d
 
-      - name: Wait for PostgreSQL
+      - name: Aguardar PostgreSQL
         run: |
           for i in {1..30}; do
             if docker compose exec -T postgres pg_isready -U root; then
@@ -55,14 +55,14 @@ jobs:
           docker compose logs
           exit 1
 
-      - name: Run Tests
+      - name: Executar testes
         run: go test -v ./...
 
-      - name: Show Docker Logs
+      - name: Exibir logs do Docker
         if: failure()
         run: docker compose logs
 
-      - name: Stop Containers
+      - name: Parar containers
         if: always()
         run: docker compose down -v
 
@@ -74,7 +74,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Go
+      - name: Configurar Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.18'
@@ -82,7 +82,7 @@ jobs:
       - name: Build
         run: go build -v -o main main.go
 
-      - name: Upload Artifact
+      - name: Enviar artefato
         uses: actions/upload-artifact@v4
         with:
           name: programa
@@ -94,6 +94,6 @@ jobs:
     secrets: inherit
 
   docker_EC2:
-    needs: build
+    needs: docker
     uses: ./.github/workflows/EC2.yml
     secrets: inherit
