@@ -11,6 +11,13 @@ on:
 jobs:
   test:
     runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        go_version: ['1.17', '1.18']
+        os: ['ubuntu-latest']
+
     env:
       HOST: localhost
       DBPORT: 5432
@@ -18,29 +25,44 @@ jobs:
       PASSWORD: root
       DBNAME: root
 
-    strategy:
-      matrix:
-        go_version: ['1.18', '1.17', '>=1.18']
-        os: ['ubuntu-latest', 'ubuntu-22.04']
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go_version }}
 
+      - name: Verify Docker
+        run: |
+          docker --version
+          docker compose version
+
       - name: Start PostgreSQL
         run: docker compose up -d
 
       - name: Wait for PostgreSQL
-        run: sleep 10
+        run: |
+          for i in {1..30}; do
+            if docker compose exec -T postgres pg_isready -U root; then
+              echo "PostgreSQL pronto!"
+              exit 0
+            fi
+            echo "Aguardando PostgreSQL..."
+            sleep 2
+          done
+          docker compose logs
+          exit 1
 
-      - name: Test
-        run: go test -v main_test.go
+      - name: Run Tests
+        run: go test -v ./...
 
-      - name: Stop containers
+      - name: Show Docker Logs
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop Containers
         if: always()
         run: docker compose down -v
 
@@ -49,12 +71,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.18'
 
       - name: Build
-        run: go build -v main.go
+        run: go build -v -o main main.go
 
-      - name: Upload Build Artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: programa
