@@ -44,7 +44,7 @@ jobs:
 
       - name: Copia do task-definition
 
-        run: cp task-definition.json.old   
+        run: cp task-definition.json task-definition.json.old   
 
 
       - name: Atualizar imagem do container
@@ -78,3 +78,19 @@ jobs:
           cluster: Api-Go-CD
 
           wait-for-service-stability: true
+      - name: Requisição
+        continue-on-error: true
+        run: |
+                sleep 30s
+                wget LB-API-Go-1760566551.us-east-2.elb.amazonaws.com:8000/bruno
+            
+      - name: Deploy ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+         task-definition: task-definition.json.old 
+         service: Servico_API_Go_CD
+         cluster: Api-Go-CD
+         wait-for-service-stability: true
+       
+
+          
