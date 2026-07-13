@@ -10,15 +10,16 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main .
 
+
 FROM ubuntu:latest
 
 WORKDIR /app
 
-COPY --from=builder /app/main main
+COPY --from=builder /app/main .
 
-RUN chmod +x main 
+RUN chmod +x main
 
-COPY ./templates/ templates/
+COPY templates ./templates
 
 EXPOSE 8000
 
