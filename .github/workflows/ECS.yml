@@ -1,15 +1,16 @@
 name: Entrega continua
 
-
 on:
-
   workflow_call:
+
+  workflow_dispatch:
 
 
 jobs:
 
-
   ECS:
+
+    name: Deploy ECS
 
     runs-on: ubuntu-latest
 
@@ -52,11 +53,9 @@ jobs:
 
           task-definition: task-definition.json
 
-
-          # precisa ser exatamente igual ao nome dentro da AWS ECS
+          # Deve ser exatamente o nome do container dentro da Task Definition ECS
 
           container-name: Go
-
 
           image: evertonhls/curso-ci-4-projeto-inicial:latest
 
