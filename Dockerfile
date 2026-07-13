@@ -16,6 +16,10 @@ WORKDIR /app
 
 COPY --from=builder /app/main main
 
+RUN chmod +x main 
+
+COPY ./templates/ templates/
+
 EXPOSE 8000
 
 CMD ["./main"]
