@@ -42,6 +42,10 @@ jobs:
             > task-definition.json
 
 
+      - name: Copia do task-definition
+
+        run: cp task-definition.json.old   
+
 
       - name: Atualizar imagem do container
 
