@@ -57,7 +57,7 @@ jobs:
 
           container-name: Go
 
-          image: evertonhls/curso-ci-4-projeto-inicial:latest
+          image: evertonhls/curso-ci-4-projeto-inicial:${{github.run_number}}
 
 
 
