@@ -4,39 +4,47 @@ on:
   workflow_call:
 
 jobs:
-
   ECS:
     runs-on: ubuntu-latest
-    steps:
-    - name: Configurando credenciais da AWS
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.ID_CHAVE_ACESSO }}
-        aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
-        aws-region: us-east-2 
-    
-    - name: Obtendo arquivo da tarefa
-      run: aws ecs describe-task-definition --task-definition Tarefa_API-GO --query taskDefinition > task-definition.json
-     
-    - name: Fill in the new image ID in the Amazon ECS task definition
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: task-definition.json
-        container-name: Go
-        image: evertonhls/go_ci:Curso_CI_4
-        environment-variables: |
-          HOST=${{ secrets.DBHOST }}
-          USER=${{ secrets.DBUSER }}
-          PASSWORD=${{ secrets.DBPASSWORD }}
-          DBNAME=${{ secrets.DBNAME }}
-          DBPORT=${{ secrets.DBPORT }}
-          PORT=8000
 
-    - name: Deploy Amazon ECS task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: Servico_API_Go_CD
-        cluster: Api-Go-CD
-        wait-for-service-stability: true
+    steps:
+      - name: Configurar credenciais da AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ID_CHAVE_ACESSO }}
+          aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
+          aws-region: us-east-2
+
+      - name: Baixar Task Definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition Tarefa_API-GO \
+            --query taskDefinition \
+            > task-definition.json
+
+      - name: Atualizar Task Definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+
+          # TROQUE pelo nome exato do contêiner da sua Task Definition
+          container-name: Go
+
+          image: evertonhls/curso-ci-4-projeto-inicial:latest
+
+          environment-variables: |
+            HOST=${{ secrets.DBHOST }}
+            USER=${{ secrets.DBUSER }}
+            PASSWORD=${{ secrets.DBPASSWORD }}
+            DBNAME=${{ secrets.DBNAME }}
+            DBPORT=${{ secrets.DBPORT }}
+            PORT=8000
+
+      - name: Deploy para o ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: Servico_API_Go_CD
+          cluster: Api-Go-CD
+          wait-for-service-stability: true
