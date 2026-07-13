@@ -4,6 +4,7 @@ on:
   workflow_call:
 
 jobs:
+
   ECS:
     runs-on: ubuntu-latest
 
@@ -25,26 +26,21 @@ jobs:
             > task-definition.json
 
 
-      - name: Atualizar imagem do container
+      - name: Atualizar Task Definition
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
 
-          # ATENÇÃO:
-          # Esse nome precisa ser igual ao "name" dentro de containerDefinitions
           container-name: Go
 
           image: evertonhls/curso-ci-4-projeto-inicial:latest
 
 
-      - name: Deploy para o ECS
+      - name: Deploy ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-
           service: Servico_API_Go_CD
-
           cluster: Api-Go-CD
-
           wait-for-service-stability: true
