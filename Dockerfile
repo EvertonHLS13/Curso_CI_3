@@ -1,13 +1,22 @@
-FROM ubuntu:latest
-
-EXPOSE 8000
+FROM golang:1.18 AS builder
 
 WORKDIR /app
 
-ENV HOST=localhost DBPORT=5432
+COPY go.mod go.sum ./
 
-ENV USER=root PASSWORD=root DBNAME=root
+RUN go mod download
 
-COPY ./main main
+COPY . .
 
-CMD [ "./main" ]
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main .
+
+
+FROM ubuntu:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/main main
+
+EXPOSE 8000
+
+CMD ["./main"]
