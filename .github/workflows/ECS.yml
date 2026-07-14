@@ -5,93 +5,67 @@ on:
 
   workflow_dispatch:
 
-
 jobs:
-
   ECS:
-
     name: Deploy ECS
-
     runs-on: ubuntu-latest
 
-
     steps:
-
-
       - name: Configurar credenciais AWS
-
         uses: aws-actions/configure-aws-credentials@v4
-
         with:
-
           aws-access-key-id: ${{ secrets.ID_CHAVE_ACESSO }}
-
           aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
-
           aws-region: us-east-2
 
-
-
       - name: Baixar Task Definition
-
         run: |
-
           aws ecs describe-task-definition \
             --task-definition Tarefa_API-GO \
             --query taskDefinition \
             > task-definition.json
 
-
       - name: Copia do task-definition
-
-        run: cp task-definition.json task-definition.json.old   
-
+        run: |
+          cp task-definition.json task-definition.json.old
 
       - name: Atualizar imagem do container
-
         id: task-def
-
         uses: aws-actions/amazon-ecs-render-task-definition@v1
-
         with:
-
           task-definition: task-definition.json
 
-          # Deve ser exatamente o nome do container dentro da Task Definition ECS
-
+          # Deve ser exatamente o nome do container da Task Definition
           container-name: Go
 
-          image: evertonhls/curso-ci-4-projeto-inicial:${{github.run_number}}
-
-
+          image: evertonhls/curso-ci-4-projeto-inicial:${{ github.run_number }}
 
       - name: Deploy ECS
-
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-
         with:
-
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-
           service: Servico_API_Go_CD
-
           cluster: Api-Go-CD
-
           wait-for-service-stability: true
-      - name: Requisição
+
+      - name: Testar aplicação
         continue-on-error: true
-        run: echo "REQUEST=0" >> $GITHUB_ENV ;
-                sleep 30s
-                wget LB-API-Go-1760566551.us-east-2.elb.amazonaws.com:8000/bruno || echo "REQUEST=1" >> $GITHUB_ENV
-            
-      - name: Deploy Amazon ECS task definition
-        if: ${{ env.REQUEST != 0 }}
+        run: |
+          REQUEST=0
+
+          sleep 30
+
+          if ! wget -qO- http://LB-API-Go-1760566551.us-east-2.elb.amazonaws.com:8000/bruno; then
+            REQUEST=1
+          fi
+
+          echo "REQUEST=$REQUEST" >> $GITHUB_ENV
+
+      - name: Rollback ECS
+        if: ${{ env.REQUEST == '1' }}
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-         task-definition: task-definition.json.old 
-         service: Servico_API_Go_CD
-         cluster: Api-Go-CD
-         wait-for-service-stability: true
-       
-
-          
+          task-definition: task-definition.json.old
+          service: Servico_API_Go_CD
+          cluster: Api-Go-CD
+          wait-for-service-stability: true
