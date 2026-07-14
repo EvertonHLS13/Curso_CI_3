@@ -14,8 +14,7 @@ var DB *gorm.DB
 
 func getEnv(keys []string, defaultValue string) string {
 	for _, key := range keys {
-		value := os.Getenv(key)
-		if value != "" {
+		if value := os.Getenv(key); value != "" {
 			return value
 		}
 	}
@@ -25,12 +24,12 @@ func getEnv(keys []string, defaultValue string) string {
 func ConectaComBancoDeDados() {
 
 	host := getEnv([]string{"DB_HOST", "HOST"}, "localhost")
-	user := getEnv([]string{"DB_USER", "USER"}, "postgres")
+	user := getEnv([]string{"DB_USER"}, "postgres")
 	password := getEnv([]string{"DB_PASSWORD", "PASSWORD"}, "postgres")
 	dbname := getEnv([]string{"DB_NAME", "DBNAME"}, "postgres")
 	port := getEnv([]string{"DB_PORT", "DBPORT"}, "5432")
 
-	log.Printf("Conectando ao banco:")
+	log.Println("Conectando ao banco:")
 	log.Printf("host=%s user=%s dbname=%s port=%s", host, user, dbname, port)
 
 	stringDeConexao := fmt.Sprintf(
@@ -43,7 +42,6 @@ func ConectaComBancoDeDados() {
 	)
 
 	db, err := gorm.Open(postgres.Open(stringDeConexao), &gorm.Config{})
-
 	if err != nil {
 		log.Println("Erro ao conectar com banco de dados")
 		log.Panic(err)
