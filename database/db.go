@@ -13,37 +13,43 @@ import (
 var DB *gorm.DB
 
 func getEnv(key, defaultValue string) string {
-	if value, ok := os.LookupEnv(key); ok && value != "" {
-		return value
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
 	}
-	return defaultValue
+	return value
 }
 
 func ConectaComBancoDeDados() {
-
 	host := getEnv("DBHOST", "localhost")
-	user := getEnv("DBUSER", "postgres")
+	user := getEnv("DBUSER", "root")
 	password := getEnv("DBPASSWORD", "postgres")
 	dbname := getEnv("DBNAME", "postgres")
 	port := getEnv("DBPORT", "5432")
+	sslMode := getEnv("DBSSLMODE", "require")
 
 	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=UTC",
 		host,
 		user,
 		password,
 		dbname,
 		port,
+		sslMode,
 	)
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Panic("Erro ao conectar com banco de dados: ", err)
+		log.Fatalf("Erro ao conectar ao banco de dados: %v", err)
 	}
 
 	DB = db
 
+	log.Println("Conectado ao PostgreSQL com sucesso!")
+
 	if err := DB.AutoMigrate(&models.Aluno{}); err != nil {
-		log.Panic("Erro no AutoMigrate: ", err)
+		log.Fatalf("Erro no AutoMigrate: %v", err)
 	}
+
+	log.Println("AutoMigrate executado com sucesso!")
 }
