@@ -9,284 +9,125 @@ on:
     branches:
       - '*'
 
-
 jobs:
-
-
   test:
-
     name: Test Go
-
     runs-on: ubuntu-latest
 
-
     strategy:
-
       fail-fast: false
-
       matrix:
-
         go_version:
-
           - '1.17'
           - '1.18'
 
-
     env:
-
       HOST: localhost
-
       DBHOST: localhost
-
       DBPORT: 5432
-
       DBUSER: postgres
-
       DBNAME: postgres
-
       DBPASSWORD: postgres
-
       PASSWORD: postgres
-
       PORT: 8000
 
-
     services:
-
-
       postgres:
-
         image: postgres:13
 
-
         env:
-
           POSTGRES_USER: postgres
-
           POSTGRES_PASSWORD: postgres
-
           POSTGRES_DB: postgres
 
-
         ports:
-
           - 5432:5432
 
-
         options: >-
-
-          --health-cmd pg_isready
-
+          --health-cmd "pg_isready -U postgres"
           --health-interval 10s
-
           --health-timeout 5s
-
           --health-retries 5
 
-
-
     steps:
-
-
       - name: Checkout
-
         uses: actions/checkout@v4
-
-
 
       - name: Configurar Go
-
         uses: actions/setup-go@v5
-
         with:
-
           go-version: ${{ matrix.go_version }}
 
-
-
       - name: Baixar dependências
-
-        run: |
-
-          go mod download
-
-
+        run: go mod download
 
       - name: Rodar testes
-
-        run: |
-
-          go test ./...
-
-
-
-
+        run: go test ./...
 
   build:
-
-
     name: Build Docker
-
-
     runs-on: ubuntu-latest
-
-
     needs: test
 
-
-
     steps:
-
-
       - name: Checkout
-
         uses: actions/checkout@v4
 
-
-
       - name: Login Docker Hub
-
         uses: docker/login-action@v3
-
-
         with:
-
           username: evertonhls
-
           password: ${{ secrets.PASSWORD_DOCKER_HUB }}
 
-
-
       - name: Build e Push Docker
-
         uses: docker/build-push-action@v6
-
-
         with:
-
           context: .
-
           push: true
-
-
-          tags: |
-
-            evertonhls/curso-ci-4-projeto-inicial:latest
-
-
-
-
+          tags: evertonhls/curso-ci-4-projeto-inicial:latest
 
   deploy:
-
-
     name: Deploy ECS
-
-
     runs-on: ubuntu-latest
-
-
     needs: build
 
-
-
     steps:
-
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Configurar credenciais AWS
-
         uses: aws-actions/configure-aws-credentials@v4
-
-
         with:
-
           aws-access-key-id: ${{ secrets.ID_CHAVE_ACESSO }}
-
           aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
-
           aws-region: us-east-2
 
-
-
-
-
       - name: Baixar Task Definition
-
         run: |
-
           aws ecs describe-task-definition \
-
             --task-definition Tarefa_API-GO \
-
             --query taskDefinition \
-
             > task-definition.json
 
-
-
-
-
       - name: Atualizar imagem do container
-
         id: task-def
-
-
         uses: aws-actions/amazon-ecs-render-task-definition@v1
-
-
         with:
-
-
           task-definition: task-definition.json
-
-
           container-name: Tarefa_API-GO
-
-
           image: evertonhls/curso-ci-4-projeto-inicial:latest
 
-
-
-
-
       - name: Deploy ECS
-
-
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-
-
         with:
-
-
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-
-
           service: Servico_API_Go_CD
-
-
           cluster: Api-Go-CD
-
-
           wait-for-service-stability: true
 
-
-
-
-
-
   LoadTest:
-
-
     name: Load Test
-
-
     needs: deploy
-
-
     if: github.ref == 'refs/heads/main'
-
-
     uses: ./.github/workflows/LoadTest.yml
-
-
     secrets: inherit
