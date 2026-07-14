@@ -12,15 +12,29 @@ import (
 
 var DB *gorm.DB
 
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
 func ConectaComBancoDeDados() {
+
+	host := getEnv("HOST", "localhost")
+	user := getEnv("USER", "postgres")
+	password := getEnv("PASSWORD", "postgres")
+	dbname := getEnv("DBNAME", "postgres")
+	port := getEnv("DBPORT", "5432")
 
 	stringDeConexao := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-		os.Getenv("HOST"),
-		os.Getenv("USER"),
-		os.Getenv("PASSWORD"),
-		os.Getenv("DBNAME"),
-		os.Getenv("DBPORT"),
+		host,
+		user,
+		password,
+		dbname,
+		port,
 	)
 
 	db, erro := gorm.Open(postgres.Open(stringDeConexao), &gorm.Config{})
@@ -32,5 +46,7 @@ func ConectaComBancoDeDados() {
 
 	DB = db
 
-	DB.AutoMigrate(&models.Aluno{})
+	if erro := DB.AutoMigrate(&models.Aluno{}); erro != nil {
+		log.Println("Erro ao executar AutoMigrate:", erro)
+	}
 }
