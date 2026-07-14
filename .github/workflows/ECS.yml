@@ -18,14 +18,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
           aws-region: us-east-2
 
-      - name: Baixar Task Definition
+      - name: Baixar Task Definition atual
         run: |
           aws ecs describe-task-definition \
             --task-definition Tarefa_API-GO \
             --query taskDefinition \
             > task-definition.json
 
-      - name: Copia do task-definition
+      - name: Backup da Task Definition
         run: |
           cp task-definition.json task-definition.json.old
 
@@ -34,10 +34,7 @@ jobs:
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
-
-          # Deve ser exatamente o nome do container da Task Definition
           container-name: Go
-
           image: evertonhls/curso-ci-4-projeto-inicial:${{ github.run_number }}
 
       - name: Deploy ECS
@@ -48,18 +45,24 @@ jobs:
           cluster: Api-Go-CD
           wait-for-service-stability: true
 
+      - name: Aguardar inicialização
+        run: sleep 30
+
       - name: Testar aplicação
+        id: teste
         continue-on-error: true
         run: |
-          REQUEST=0
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            http://LB-API-Go-1760566551.us-east-2.elb.amazonaws.com:8000/bruno)
 
-          sleep 30
+          echo "Status HTTP: $STATUS"
 
-          if ! wget -qO- http://LB-API-Go-1760566551.us-east-2.elb.amazonaws.com:8000/bruno; then
-            REQUEST=1
+          if [ "$STATUS" = "200" ]; then
+            echo "REQUEST=0" >> $GITHUB_ENV
+          else
+            echo "REQUEST=1" >> $GITHUB_ENV
+            exit 1
           fi
-
-          echo "REQUEST=$REQUEST" >> $GITHUB_ENV
 
       - name: Rollback ECS
         if: ${{ env.REQUEST == '1' }}
@@ -69,3 +72,9 @@ jobs:
           service: Servico_API_Go_CD
           cluster: Api-Go-CD
           wait-for-service-stability: true
+
+      - name: Falhar workflow após rollback
+        if: ${{ env.REQUEST == '1' }}
+        run: |
+          echo "Deploy inválido. Rollback executado."
+          exit 1
