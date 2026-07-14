@@ -80,11 +80,12 @@ jobs:
           wait-for-service-stability: true
       - name: Requisição
         continue-on-error: true
-        run: |
+        run: echo "REQUEST=0" >> $GITHUB_ENV ;
                 sleep 30s
-                wget LB-API-Go-1760566551.us-east-2.elb.amazonaws.com:8000/bruno
+                wget LB-API-Go-1760566551.us-east-2.elb.amazonaws.com:8000/bruno || echo "REQUEST=1" >> $GITHUB_ENV
             
-      - name: Deploy ECS
+      - name: Deploy Amazon ECS task definition
+        if: ${{ env.REQUEST != 0 }}
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
          task-definition: task-definition.json.old 
