@@ -49,9 +49,11 @@ func ConectaComBancoDeDados() {
 		"5432",
 	)
 
+	// AWS RDS usa require
+	// GitHub Actions/Postgres local usa disable
 	sslmode := getEnv(
 		[]string{"DB_SSLMODE", "DBSSLMODE"},
-		"require",
+		"disable",
 	)
 
 	log.Println("Conectando ao banco:")
@@ -88,11 +90,7 @@ func ConectaComBancoDeDados() {
 
 	log.Println("Banco conectado com sucesso")
 
-	err = DB.AutoMigrate(
-		&models.Aluno{},
-	)
-
-	if err != nil {
+	if err := DB.AutoMigrate(&models.Aluno{}); err != nil {
 		log.Println("Erro no AutoMigrate:", err)
 	}
 }
