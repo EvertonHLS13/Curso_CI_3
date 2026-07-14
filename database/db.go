@@ -18,30 +18,67 @@ func getEnv(keys []string, defaultValue string) string {
 			return value
 		}
 	}
+
 	return defaultValue
 }
 
 func ConectaComBancoDeDados() {
 
-	host := getEnv([]string{"DB_HOST", "HOST"}, "localhost")
-	user := getEnv([]string{"DB_USER"}, "postgres")
-	password := getEnv([]string{"DB_PASSWORD", "PASSWORD"}, "postgres")
-	dbname := getEnv([]string{"DB_NAME", "DBNAME"}, "postgres")
-	port := getEnv([]string{"DB_PORT", "DBPORT"}, "5432")
+	host := getEnv(
+		[]string{"DB_HOST", "HOST"},
+		"localhost",
+	)
+
+	user := getEnv(
+		[]string{"DB_USER", "DBUSER"},
+		"postgres",
+	)
+
+	password := getEnv(
+		[]string{"DB_PASSWORD", "PASSWORD"},
+		"postgres",
+	)
+
+	dbname := getEnv(
+		[]string{"DB_NAME", "DBNAME"},
+		"postgres",
+	)
+
+	port := getEnv(
+		[]string{"DB_PORT", "DBPORT"},
+		"5432",
+	)
+
+	sslmode := getEnv(
+		[]string{"DB_SSLMODE", "DBSSLMODE"},
+		"require",
+	)
 
 	log.Println("Conectando ao banco:")
-	log.Printf("host=%s user=%s dbname=%s port=%s", host, user, dbname, port)
+	log.Printf(
+		"host=%s user=%s dbname=%s port=%s sslmode=%s",
+		host,
+		user,
+		dbname,
+		port,
+		sslmode,
+	)
 
 	stringDeConexao := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
 		host,
 		user,
 		password,
 		dbname,
 		port,
+		sslmode,
 	)
 
-	db, err := gorm.Open(postgres.Open(stringDeConexao), &gorm.Config{})
+	db, err := gorm.Open(
+		postgres.Open(stringDeConexao),
+		&gorm.Config{},
+	)
+
 	if err != nil {
 		log.Println("Erro ao conectar com banco de dados")
 		log.Panic(err)
@@ -49,7 +86,13 @@ func ConectaComBancoDeDados() {
 
 	DB = db
 
-	if err := DB.AutoMigrate(&models.Aluno{}); err != nil {
+	log.Println("Banco conectado com sucesso")
+
+	err = DB.AutoMigrate(
+		&models.Aluno{},
+	)
+
+	if err != nil {
 		log.Println("Erro no AutoMigrate:", err)
 	}
 }
