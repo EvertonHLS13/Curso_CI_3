@@ -19,3 +19,23 @@ jobs:
 
       - name: Clonar repositório Infra_CI
         run: git clone https://github.com/EvertonHLS13/Infra_CI.git
+
+      - name: HashiCorp - Setup terraform
+        uses: hashicorp/setup-terraform@v2.0.3
+
+      - run: terraform -chdir=Infra_CI/env/Homolog init 
+
+      - run: terraform -chdir=Infra_CI/env/Homolog destroy -auto-aprove
+
+      - run: terraform -chdir=Infra_CI/env/Homolog apply -auto-aprove 
+
+      - run: echo "$(terraform -chdir=Infra_CI/env/Homolog output -raw IP_alb)" 
+
+      - name: Setup Python
+        uses: actions/setup-python@v2.3.3
+        with:
+          python-version: 3.10
+      - uses: BSFishy/pip-action@v1
+        with:
+         packages: |
+           locust       
