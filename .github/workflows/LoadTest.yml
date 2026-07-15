@@ -4,14 +4,18 @@ on:
   workflow_call:
 
 jobs:
-  
   loadtest:
-      runs-on: ubuntu-latest
-      steps:
-        - uses: actions/checkout@v4
-        - name: Configurar credenciais AWS
-          uses: aws-actions/configure-aws-credentials@v4
-          with:
-            aws-access-key-id: ${{ secrets.ID_CHAVE_ACESSO }}
-            aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
-            aws-region: us-east-2
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.ID_CHAVE_ACESSO }}
+          aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
+          aws-region: us-east-2
+
+      - name: Clonar repositório Infra_CI
+        run: git clone https://github.com/EvertonHLS13/Infra_CI.git
