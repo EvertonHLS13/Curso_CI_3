@@ -94,7 +94,7 @@ jobs:
             --run-time 60s \
             -H http://${{ steps.alb.outputs.alb }}
 
-      - name: Terraform Destroy final
+      - name: Terraform Destroy alterado para evertonhls
         if: always()
         working-directory: Infra_CI/env/Homolog
         run: |
