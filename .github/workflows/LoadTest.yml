@@ -8,7 +8,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout aplicação
+        uses: actions/checkout@v4
 
       - name: Configurar credenciais AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -18,24 +19,39 @@ jobs:
           aws-region: us-east-2
 
       - name: Clonar repositório Infra_CI
-        run: git clone https://github.com/EvertonHLS13/Infra_CI.git
+        run: |
+          git clone https://github.com/EvertonHLS13/Infra_CI.git Infra_CI
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
-        run: terraform -chdir=Infra_CI/env/Homolog init
+        working-directory: Infra_CI/env/Homolog
+        run: terraform init
 
-      - name: Terraform Destroy (caso exista infraestrutura)
-        run: terraform -chdir=Infra_CI/env/Homolog destroy -auto-approve
+      - name: Terraform Destroy inicial (limpeza)
+        working-directory: Infra_CI/env/Homolog
+        continue-on-error: true
+        run: terraform destroy -auto-approve
 
       - name: Terraform Apply
-        run: terraform -chdir=Infra_CI/env/Homolog apply -auto-approve
+        working-directory: Infra_CI/env/Homolog
+        run: terraform apply -auto-approve
 
       - name: Obter IP do ALB
-        id: URL
+        id: alb
+        working-directory: Infra_CI/env/Homolog
         run: |
-          echo "alb=$(terraform -chdir=Infra_CI/env/Homolog output -raw IP_alb)" >> "$GITHUB_OUTPUT"
+          ALB=$(terraform output -raw IP_alb)
+
+          if [ -z "$ALB" ]; then
+            echo "Erro: Não foi possível obter o ALB"
+            exit 1
+          fi
+
+          echo "alb=$ALB" >> "$GITHUB_OUTPUT"
+
+          echo "ALB criado: $ALB"
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -50,24 +66,25 @@ jobs:
       - name: Criar locustfile.py
         run: |
           cat <<EOF > locustfile.py
-          from locust import HttpUser, TaskSet, task, between
-
-          class UserTasks(TaskSet):
-              @task(1)
-              def index(self):
-                  self.client.get("/")
+          from locust import HttpUser, task, between
 
           class WebsiteUser(HttpUser):
-              tasks = [UserTasks]
+
               wait_time = between(1, 5)
+
+              @task
+              def index(self):
+                  self.client.get("/")
           EOF
 
           cat locustfile.py
 
-      - name: Aguardar ALB ficar disponível
-        run: sleep 60
+      - name: Aguardar ALB iniciar
+        run: |
+          echo "Aguardando Load Balancer ficar disponível..."
+          sleep 60
 
-      - name: Rodar teste de carga
+      - name: Executar teste de carga
         run: |
           locust \
             -f locustfile.py \
@@ -75,8 +92,10 @@ jobs:
             -u 10 \
             -r 5 \
             --run-time 60s \
-            -H http://${{ steps.URL.outputs.alb }}
+            -H http://${{ steps.alb.outputs.alb }}
 
-      - name: Terraform Destroy
+      - name: Terraform Destroy final
         if: always()
-        run: terraform -chdir=Infra_CI/env/Homolog destroy -auto-approve
+        working-directory: Infra_CI/env/Homolog
+        run: |
+          terraform destroy -auto-approve
