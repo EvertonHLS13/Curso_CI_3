@@ -52,3 +52,6 @@ jobs:
         working-directory: Infra_CI_Kubernetes/env/Homolog
         run: |
           terraform apply -auto-approve
+
+      - name: Kubectl tool installer
+        uses: Azure/setup-kubectl@v3     
