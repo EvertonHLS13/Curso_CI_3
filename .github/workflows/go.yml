@@ -125,8 +125,23 @@ jobs:
           cluster: Api-Go-CD
           wait-for-service-stability: true
 
-  LoadTest:
-    name: Load Test
-    needs: deploy
-    uses: ./.github/workflows/LoadTest.yml
+  Deploy_EKS:
+    needs: build
+    uses: ./.github/workflows/EKS.yml
     secrets: inherit
+
+  # Deploy_EC2:
+  #   needs: build
+  #   uses: ./.github/workflows/EC2.yml
+  #   secrets: inherit
+
+  # Deploy_ECS:
+  #   needs: build
+  #   uses: ./.github/workflows/ECS.yml
+  #   secrets: inherit
+
+  # LoadTest:
+  #   needs: build
+  #   if: ${{ github.ref_name == 'Homolog' }}
+  #   uses: ./.github/workflows/LoadTest.yml
+  #   secrets: inherit
