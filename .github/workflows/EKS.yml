@@ -6,6 +6,7 @@ on:
 jobs:
   EKS:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout aplicação
         uses: actions/checkout@v4
@@ -15,16 +16,31 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.ID_CHAVE_ACESSO }}
           aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
-          aws-region: us-east-2
+          aws-region: us-west-2
 
+      - name: Clonar repositório de infraestrutura
+        run: |
+          git clone https://github.com/EvertonHLS13/Infra_CI_Kubernetes.git
 
-      - run: git clone https://github.com/EvertonHLS13/Infra_CI_Kubernetes.git
-
-      - name: HashiCorp - Setup Terraform
+      - name: HashiCorp Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         working-directory: Infra_CI_Kubernetes/env/Homolog
-        run: terraform init -input=false
+        run: |
+          terraform init -input=false
 
-      - run: terraform -chdir=Infra_CI_Kubernetes/env/Homolog apply -auto-approve
+      - name: Terraform Validate
+        working-directory: Infra_CI_Kubernetes/env/Homolog
+        run: |
+          terraform validate
+
+      - name: Terraform Plan
+        working-directory: Infra_CI_Kubernetes/env/Homolog
+        run: |
+          terraform plan -input=false
+
+      - name: Terraform Apply
+        working-directory: Infra_CI_Kubernetes/env/Homolog
+        run: |
+          terraform apply -auto-approve
