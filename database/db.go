@@ -49,12 +49,26 @@ func ConectaComBancoDeDados() {
 		"5432",
 	)
 
-	// AWS RDS PostgreSQL exige SSL
-	// Caso queira ambiente local, sobrescreva com DB_SSLMODE=disable
-	sslmode := getEnv(
-		[]string{"DB_SSLMODE", "DBSSLMODE"},
-		"require",
-	)
+
+	// Define SSL automaticamente
+	//
+	// AWS RDS:
+	// sslmode=require
+	//
+	// Local/GitHub Actions:
+	// sslmode=disable
+
+	sslmode := os.Getenv("DB_SSLMODE")
+
+	if sslmode == "" {
+
+		if host == "localhost" || host == "127.0.0.1" {
+			sslmode = "disable"
+		} else {
+			sslmode = "require"
+		}
+	}
+
 
 	log.Println("Conectando ao banco:")
 	log.Printf(
@@ -66,6 +80,7 @@ func ConectaComBancoDeDados() {
 		sslmode,
 	)
 
+
 	stringDeConexao := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s connect_timeout=10",
 		host,
@@ -76,22 +91,30 @@ func ConectaComBancoDeDados() {
 		sslmode,
 	)
 
+
 	db, err := gorm.Open(
 		postgres.Open(stringDeConexao),
 		&gorm.Config{},
 	)
 
+
 	if err != nil {
+
 		log.Println("Erro ao conectar com banco de dados:")
 		log.Println(err)
+
 		log.Panic("Falha na conexão com PostgreSQL")
 	}
 
+
 	DB = db
+
 
 	log.Println("Banco conectado com sucesso")
 
+
 	if err := DB.AutoMigrate(&models.Aluno{}); err != nil {
+
 		log.Println("Erro no AutoMigrate:")
 		log.Println(err)
 	}
