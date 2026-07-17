@@ -100,11 +100,12 @@ jobs:
 
       - name: Build e Push Docker
         uses: docker/build-push-action@v6
-
         with:
           context: .
           push: true
-          tags: evertonhls/curso-ci-4-projeto-inicial:latest
+          tags: |
+            evertonhls/curso-ci-4-projeto-inicial:${{ github.run_number }}
+            evertonhls/curso-ci-4-projeto-inicial:latest
 
 
 
