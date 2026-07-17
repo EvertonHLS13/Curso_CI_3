@@ -25,17 +25,17 @@ func getEnv(keys []string, defaultValue string) string {
 func ConectaComBancoDeDados() {
 
 	host := getEnv(
-		[]string{"DB_HOST", "HOST"},
+		[]string{"DB_HOST", "DBHOST", "HOST"},
 		"localhost",
 	)
 
 	user := getEnv(
-		[]string{"DB_USER", "DBUSER"},
+		[]string{"DB_USER", "DBUSER", "USER"},
 		"postgres",
 	)
 
 	password := getEnv(
-		[]string{"DB_PASSWORD", "PASSWORD"},
+		[]string{"DB_PASSWORD", "DBPASSWORD", "PASSWORD"},
 		"postgres",
 	)
 
@@ -49,11 +49,11 @@ func ConectaComBancoDeDados() {
 		"5432",
 	)
 
-	// AWS RDS usa require
-	// GitHub Actions/Postgres local usa disable
+	// AWS RDS PostgreSQL exige SSL
+	// Caso queira ambiente local, sobrescreva com DB_SSLMODE=disable
 	sslmode := getEnv(
 		[]string{"DB_SSLMODE", "DBSSLMODE"},
-		"disable",
+		"require",
 	)
 
 	log.Println("Conectando ao banco:")
@@ -67,7 +67,7 @@ func ConectaComBancoDeDados() {
 	)
 
 	stringDeConexao := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s connect_timeout=10",
 		host,
 		user,
 		password,
@@ -82,8 +82,9 @@ func ConectaComBancoDeDados() {
 	)
 
 	if err != nil {
-		log.Println("Erro ao conectar com banco de dados")
-		log.Panic(err)
+		log.Println("Erro ao conectar com banco de dados:")
+		log.Println(err)
+		log.Panic("Falha na conexão com PostgreSQL")
 	}
 
 	DB = db
@@ -91,6 +92,7 @@ func ConectaComBancoDeDados() {
 	log.Println("Banco conectado com sucesso")
 
 	if err := DB.AutoMigrate(&models.Aluno{}); err != nil {
-		log.Println("Erro no AutoMigrate:", err)
+		log.Println("Erro no AutoMigrate:")
+		log.Println(err)
 	}
 }
