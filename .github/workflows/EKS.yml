@@ -8,8 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout aplicação
         uses: actions/checkout@v4
+
 
       - name: Configurando credenciais da AWS
         uses: aws-actions/configure-aws-credentials@v4
@@ -18,127 +20,181 @@ jobs:
           aws-secret-access-key: ${{ secrets.CHAVE_SECRETA }}
           aws-region: us-east-2
 
+
       - name: Clonar repositório de infraestrutura
         run: |
           git clone https://github.com/EvertonHLS13/Infra_CI_Kubernetes.git
 
+
       - name: HashiCorp Setup Terraform
         uses: hashicorp/setup-terraform@v3
+
 
       - name: Terraform Init
         working-directory: Infra_CI_Kubernetes/env/Homolog
         run: |
           terraform init -input=false -reconfigure
 
+
       - name: Terraform Validate
         working-directory: Infra_CI_Kubernetes/env/Homolog
         run: |
           terraform validate
+
 
       - name: Terraform Plan
         working-directory: Infra_CI_Kubernetes/env/Homolog
         run: |
           terraform plan -input=false
 
+
       - name: Terraform Apply
         working-directory: Infra_CI_Kubernetes/env/Homolog
         run: |
           terraform apply -auto-approve
+
 
       - name: Obter endpoint do RDS
         id: URL
         run: |
           echo "stdout=$(terraform -chdir=Infra_CI_Kubernetes/env/Homolog output -raw IP_db)" >> $GITHUB_OUTPUT
 
+
       - name: Instalar kubectl
         uses: Azure/setup-kubectl@v3
 
+
       - name: Verificar identidade AWS
-        run: aws sts get-caller-identity
+        run: |
+          aws sts get-caller-identity
+
 
       - name: Configurar kubeconfig
         run: |
-          aws eks update-kubeconfig --region us-east-2 --name homolog2
+          aws eks update-kubeconfig \
+            --region us-east-2 \
+            --name homolog2
+
 
       - name: Verificar cluster
-        run: kubectl get nodes
+        run: |
+          kubectl get nodes
+
 
       - name: Verificar serviços
-        run: kubectl get svc
-
-      - name: Recriar Secret DBHOST
         run: |
-          kubectl delete secret dbhost --ignore-not-found
+          kubectl get svc
+
+
+      - name: Criar Secret DBHOST
+        run: |
           kubectl create secret generic dbhost \
-            --from-literal=HOST=${{ steps.URL.outputs.stdout }}
+            --from-literal=HOST=${{ steps.URL.outputs.stdout }} \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Recriar Secret DBPORT
+
+      - name: Criar Secret DBPORT
         run: |
-          kubectl delete secret dbport --ignore-not-found
           kubectl create secret generic dbport \
-            --from-literal=DBPORT=5432
+            --from-literal=DBPORT=5432 \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Recriar Secret DBUSER
+
+      - name: Criar Secret DBUSER
         run: |
-          kubectl delete secret dbuser --ignore-not-found
           kubectl create secret generic dbuser \
-            --from-literal=USER=${{ secrets.DBUSER }}
+            --from-literal=USER=${{ secrets.DBUSER }} \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Recriar Secret DBPASSWORD
+
+      - name: Criar Secret DBPASSWORD
         run: |
-          kubectl delete secret dbpassword --ignore-not-found
           kubectl create secret generic dbpassword \
-            --from-literal=PASSWORD=${{ secrets.DBPASSWORD }}
+            --from-literal=PASSWORD=${{ secrets.DBPASSWORD }} \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Recriar Secret DBNAME
+
+      - name: Criar Secret DBNAME
         run: |
-          kubectl delete secret dbname --ignore-not-found
           kubectl create secret generic dbname \
-            --from-literal=DBNAME=${{ secrets.DBNAME }}
+            --from-literal=DBNAME=${{ secrets.DBNAME }} \
+            --dry-run=client -o yaml | kubectl apply -f -
 
-      - name: Recriar Secret PORT
+
+      - name: Criar Secret PORT
         run: |
-          kubectl delete secret port --ignore-not-found
           kubectl create secret generic port \
-            --from-literal=PORT=8000
+            --from-literal=PORT=8000 \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+
+      - name: Ajustar replicas antes do deploy
+        run: |
+          kubectl scale deployment go-api --replicas=2 --timeout=60s || true
+
 
       - name: Aplicar Deployment
         run: |
           kubectl apply -f Infra_CI_Kubernetes/go.yaml
 
+
       - name: Atualizar imagem
         run: |
           kubectl set image deployment/go-api \
-            go=evertonhls/curso-ci-4-projeto-inicial:${{ github.run_number }}
+          go=evertonhls/curso-ci-4-projeto-inicial:${{ github.run_number }}
+
+
+      - name: Reiniciar deployment
+        run: |
+          kubectl rollout restart deployment/go-api
+
 
       - name: Aguardar rollout
         run: |
           kubectl rollout status deployment/go-api --timeout=300s
+          kubectl get pods -o wide
+
 
       - name: Diagnóstico em caso de falha
         if: failure()
         run: |
+
           echo "================ DEPLOYMENTS ================"
           kubectl get deployment -o wide || true
+
 
           echo "================ DESCRIBE DEPLOYMENT ========"
           kubectl describe deployment go-api || true
 
+
           echo "================ REPLICASETS ================"
           kubectl get rs -o wide || true
+
 
           echo "================ PODS ======================="
           kubectl get pods -o wide || true
 
+
           echo "================ DESCRIBE PODS =============="
           kubectl describe pods || true
 
+
           echo "================ LOGS ======================="
-          for pod in $(kubectl get pods -o jsonpath='{.items[*].metadata.name}'); do
+
+          for pod in $(kubectl get pods -o jsonpath='{.items[*].metadata.name}')
+          do
             echo "========== $pod =========="
-            kubectl logs "$pod" --previous --all-containers=true || \
-            kubectl logs "$pod" --all-containers=true || true
+
+            kubectl logs "$pod" \
+            --previous \
+            --all-containers=true || \
+            kubectl logs "$pod" \
+            --all-containers=true || true
+
           done
 
+
           echo "================ EVENTS ====================="
-          kubectl get events --sort-by=.metadata.creationTimestamp || true
+
+          kubectl get events \
+          --sort-by=.metadata.creationTimestamp || true
