@@ -60,7 +60,12 @@ jobs:
         run: aws eks update-kubeconfig --region us-east-2 --name homolog2
 
       - name: Verificar cluster
+        run: kubectl get nodes
+        continue-on-error: true
+
+      - name: Verificar serviços
         run: kubectl get svc
+        continue-on-error: true
 
       - name: Recriar Secret DBHOST
         run: |
@@ -107,4 +112,29 @@ jobs:
             go=evertonhls/go_ci:${{ github.run_number }}
 
       - name: Aguardar rollout
-        run: kubectl rollout status deployment/go-api
+        run: |
+          kubectl rollout status deployment/go-api --timeout=300s
+
+      - name: Diagnóstico em caso de falha
+        if: failure()
+        run: |
+          echo "================ DEPLOYMENT ================"
+          kubectl describe deployment go-api || true
+
+          echo "================ REPLICASETS ================"
+          kubectl get rs || true
+
+          echo "================ PODS ======================="
+          kubectl get pods -o wide || true
+
+          echo "================ DESCRIBE PODS =============="
+          kubectl describe pods -l nome=go || true
+
+          echo "================ LOGS ======================="
+          for pod in $(kubectl get pods -l nome=go -o jsonpath='{.items[*].metadata.name}'); do
+            echo "========== $pod =========="
+            kubectl logs "$pod" --previous || kubectl logs "$pod" || true
+          done
+
+          echo "================ EVENTS ====================="
+          kubectl get events --sort-by=.metadata.creationTimestamp || true
