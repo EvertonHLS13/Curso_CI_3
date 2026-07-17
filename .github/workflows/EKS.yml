@@ -109,7 +109,11 @@ jobs:
       - name: Atualizar imagem
         run: |
           kubectl set image deployment/go-api \
-            go=evertonhls/go_ci:${{ github.run_number }}
+            go=evertonhls/curso-ci-4-projeto-inicial:${{ github.run_number }}
+
+      - name: Verificar rollout
+        run: |
+          kubectl rollout status deployment/go-api --timeout=300s
 
       - name: Aguardar rollout
         run: |
